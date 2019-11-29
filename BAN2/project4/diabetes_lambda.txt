@@ -1,0 +1,50 @@
+import json
+import boto3
+import threading
+import random
+import base64
+import time
+
+next_node = ''
+# BP = {}
+lambda_client = boto3.client('lambda')
+nextfunctionName = ''
+    
+def lambda_handler(event, context):
+    # TODO implement
+    nextfunctionResp = lambda_client.invoke(
+        FunctionName = 'routing_lambda',
+        InvocationType='RequestResponse',
+        Payload = json.dumps({ 'fromNode': 'diabetes_lambda'})
+        )
+    nextfunction = json.loads(nextfunctionResp['Payload'].read().decode())
+    nextfunctionName = nextfunction["body"]
+    print(nextfunction["body"])
+    if 'caller' in event :
+        print(event['caller'])
+    if 'caller' in event and event['caller'] != 'diabetes_lambda':
+        call_next(event, context, nextfunctionName)
+    else:
+        for x in range(5):
+            event['caller'] = 'diabetes_lambda'
+            event['diabetes'] = {}
+            event['diabetes']['val']= round(random.uniform(3.9,6),2)
+ 
+            call_next(event, context,nextfunctionName)
+            time.sleep(2)
+    
+def call_next(event, context,nextfunctionName):
+    # TODO implement
+    MESSAGE = json.dumps(event)
+    
+    response = lambda_client.invoke(
+        FunctionName = nextfunctionName,
+        InvocationType='Event',
+        Payload = MESSAGE
+        )
+    
+    print(MESSAGE)
+    return {
+        'statusCode': 200,
+        'body': event
+    }

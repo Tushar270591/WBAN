@@ -1,0 +1,48 @@
+import json
+import boto3
+import threading
+import random
+import time
+
+next_node = ''
+lambda_client = boto3.client('lambda')
+nextfunctionName = ''
+def lambda_handler(event, context):
+    # TODO implement
+    nextfunctionResp = lambda_client.invoke(
+        FunctionName = 'routing_lambda',
+        InvocationType='RequestResponse',
+        Payload = json.dumps({ 'fromNode': 'accelerometer_lambda'})
+        )
+    nextfunction = json.loads(nextfunctionResp['Payload'].read().decode())
+    nextfunctionName = nextfunction["body"]
+    
+    if 'caller' in event and event['caller'] != 'accelerometer_lambda':
+        call_next(event, context, nextfunctionName)
+    else:
+        for x in range(10):
+            event['caller'] = 'accelerometer_lambda'
+            event['accelerometer'] = {}
+            event['accelerometer']['x'] = random.randrange(-1,250)
+            event['accelerometer']['y'] = random.randrange(-1,250)
+            event['accelerometer']['z'] = random.randrange(-1,250)
+        
+            call_next(event, context, nextfunctionName)
+            time.sleep(1)
+    
+def call_next(event, context, nextfunctionName):
+    # TODO implement
+    MESSAGE = json.dumps(event)
+    
+    response = lambda_client.invoke(
+        FunctionName = nextfunctionName,
+        InvocationType='Event',
+        Payload = MESSAGE
+        )
+    
+    print(MESSAGE)
+    # print(response['Payload'].read())
+    return {
+        'statusCode': 200,
+        'body': MESSAGE
+    }
